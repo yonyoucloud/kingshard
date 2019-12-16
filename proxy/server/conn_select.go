@@ -20,11 +20,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/flike/kingshard/core/errors"
-	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/core/hack"
-	"github.com/flike/kingshard/mysql"
-	"github.com/flike/kingshard/sqlparser"
+	"github.com/yonyoucloud/kingshard/core/errors"
+	"github.com/yonyoucloud/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/core/hack"
+	"github.com/yonyoucloud/kingshard/mysql"
+	"github.com/yonyoucloud/kingshard/sqlparser"
 )
 
 const (

@@ -17,7 +17,7 @@ package server
 import (
 	"testing"
 
-	. "github.com/flike/kingshard/mysql"
+	. "github.com/yonyoucloud/kingshard/mysql"
 )
 
 func TestConn_Handshake(t *testing.T) {

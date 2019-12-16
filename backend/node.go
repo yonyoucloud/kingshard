@@ -21,9 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/flike/kingshard/config"
-	"github.com/flike/kingshard/core/errors"
-	"github.com/flike/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/config"
+	"github.com/yonyoucloud/kingshard/core/errors"
+	"github.com/yonyoucloud/kingshard/core/golog"
 )
 
 const (

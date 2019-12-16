@@ -1,6 +1,6 @@
 # kingshard按时间分表功能介绍
 
-在[文档](https://github.com/flike/kingshard/blob/master/doc/KingDoc/how_to_use_kingshard.md)中主要介绍了kingshard的Hash和Range方式的分表，最近又开发了按时间维度的分表方式。按时间维度分表的场景非常普遍，下面介绍一下kingshard的时间分表功能
+在[文档](https://github.com/yonyoucloud/kingshard/blob/master/doc/KingDoc/how_to_use_kingshard.md)中主要介绍了kingshard的Hash和Range方式的分表，最近又开发了按时间维度的分表方式。按时间维度分表的场景非常普遍，下面介绍一下kingshard的时间分表功能
 
 ## 1. 支持的时间类型
 

@@ -1,0 +1,29 @@
+# github.com/dgrijalva/jwt-go v0.0.0-20160831183534-24c63f56522a
+github.com/dgrijalva/jwt-go
+# github.com/labstack/echo v0.0.0-20160909223046-03efe4d61b73
+github.com/labstack/echo
+github.com/labstack/echo/engine/standard
+github.com/labstack/echo/middleware
+github.com/labstack/echo/context
+github.com/labstack/echo/engine
+github.com/labstack/echo/log
+# github.com/labstack/gommon v0.0.0-20160819151315-431777a5117c
+github.com/labstack/gommon/log
+github.com/labstack/gommon/bytes
+github.com/labstack/gommon/color
+github.com/labstack/gommon/random
+# github.com/mattn/go-colorable v0.0.6
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.0-20160806122752-66b8e73f3f5c
+github.com/mattn/go-isatty
+# github.com/tylerb/graceful v1.2.3
+github.com/tylerb/graceful
+# github.com/valyala/fasttemplate v0.0.0-20160315193134-3b874956e03f
+github.com/valyala/fasttemplate
+# golang.org/x/net v0.0.0-20190620200207-3b0461eec859
+golang.org/x/net/context
+golang.org/x/net/netutil
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
+golang.org/x/sys/unix
+# gopkg.in/yaml.v2 v2.0.0-20160912165603-31c299268d30
+gopkg.in/yaml.v2

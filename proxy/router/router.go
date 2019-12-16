@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flike/kingshard/config"
-	"github.com/flike/kingshard/core/errors"
-	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/sqlparser"
+	"github.com/yonyoucloud/kingshard/config"
+	"github.com/yonyoucloud/kingshard/core/errors"
+	"github.com/yonyoucloud/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/sqlparser"
 )
 
 var (

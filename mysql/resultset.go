@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/flike/kingshard/core/hack"
+	"github.com/yonyoucloud/kingshard/core/hack"
 )
 
 type RowData []byte

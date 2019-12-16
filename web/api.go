@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	ksError "github.com/flike/kingshard/core/errors"
-	"github.com/flike/kingshard/core/golog"
+	ksError "github.com/yonyoucloud/kingshard/core/errors"
+	"github.com/yonyoucloud/kingshard/core/golog"
 	"github.com/labstack/echo"
 )
 

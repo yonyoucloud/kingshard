@@ -7,7 +7,7 @@
 首选，对kingshard进行性能优化，我们必须要找到kingshard的性能瓶颈在哪里。Go语言在性能优化支持方面做的非常好，借助于go语言的pprof工具，我们可以通过简单的几个步骤，就能得到kingshard在转发SQL请求时的各个函数耗时情况。
 
 ### 1.1 环境搭建
-根据[kingshard使用指南](https://github.com/flike/kingshard/blob/master/doc/KingDoc/how_to_use_kingshard.md)搭建一个kingshard代理环境。我是用macbook搭建的环境，硬件参数如下所示：
+根据[kingshard使用指南](https://github.com/yonyoucloud/kingshard/blob/master/doc/KingDoc/how_to_use_kingshard.md)搭建一个kingshard代理环境。我是用macbook搭建的环境，硬件参数如下所示：
 
 ```
 CPU： 2.2GHZ * 4
@@ -111,7 +111,7 @@ func (c *TCPConn) SetNoDelay(noDelay bool) error
 
 ## 2.1 代码修改和性能测试
 
-发现了性能瓶颈以后，修改proxy/server/server.go文件中的newClientConn函数和backend/backend_conn.go中的ReConnect函数，分别设置client与kingshard之间的连接和kingshard到MySQL之间的连接为最小化传输延时。具体的代码修改可以查看这个[commit](https://github.com/flike/kingshard/commit/6c175d127c7b15b527cedb02876634901f2b9be1)。
+发现了性能瓶颈以后，修改proxy/server/server.go文件中的newClientConn函数和backend/backend_conn.go中的ReConnect函数，分别设置client与kingshard之间的连接和kingshard到MySQL之间的连接为最小化传输延时。具体的代码修改可以查看这个[commit](https://github.com/yonyoucloud/kingshard/commit/6c175d127c7b15b527cedb02876634901f2b9be1)。
 
 修改后我们利用sysbench重新测试，测试命令和上述测试一致。得到的结果如下所示：
 

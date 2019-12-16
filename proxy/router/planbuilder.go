@@ -20,9 +20,9 @@ import (
 
 	"strings"
 
-	"github.com/flike/kingshard/core/errors"
-	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/sqlparser"
+	"github.com/yonyoucloud/kingshard/core/errors"
+	"github.com/yonyoucloud/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/sqlparser"
 )
 
 const (

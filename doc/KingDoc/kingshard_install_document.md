@@ -125,7 +125,7 @@ schema_list :
 
 **2. kingshard采用的是yaml方式解析配置文件，需要注意的是yaml配置文件不允许出现tab键，且冒号后面需要跟一个空格。配置文件编写完成后，可以在[yaml lint](http://www.yamllint.com/)网站验证是否有格式错误。**
 
-**3. windows下安装kingshard，参考[文档](https://github.com/flike/kingshard/wiki/%E5%9C%A8window%E4%B8%8B%E5%AE%89%E8%A3%85kingshard)**
+**3. windows下安装kingshard，参考[文档](https://github.com/yonyoucloud/kingshard/wiki/%E5%9C%A8window%E4%B8%8B%E5%AE%89%E8%A3%85kingshard)**
 
 **4. 可以通过`./bin/kingshard -v`来查看kingshard的commit hash和编译时间，从而维持kingshard的版本。**
 

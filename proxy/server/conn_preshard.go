@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flike/kingshard/backend"
-	"github.com/flike/kingshard/core/errors"
-	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/core/hack"
-	"github.com/flike/kingshard/mysql"
-	"github.com/flike/kingshard/proxy/router"
-	"github.com/flike/kingshard/sqlparser"
+	"github.com/yonyoucloud/kingshard/backend"
+	"github.com/yonyoucloud/kingshard/core/errors"
+	"github.com/yonyoucloud/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/core/hack"
+	"github.com/yonyoucloud/kingshard/mysql"
+	"github.com/yonyoucloud/kingshard/proxy/router"
+	"github.com/yonyoucloud/kingshard/sqlparser"
 )
 
 type ExecuteDB struct {
