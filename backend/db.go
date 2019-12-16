@@ -77,7 +77,7 @@ func Open(addr string, user string, password string, dbName string, maxConnNum i
 	//check connection
 	db.checkConn, err = db.newConn()
 	if err != nil {
-		// db.Close()
+		db.Close()
 		// 返回无连接的db实例，确保配置中有数据库服务有问题，kingshard也同样启动成功
 		return db, err
 	}
@@ -90,7 +90,7 @@ func Open(addr string, user string, password string, dbName string, maxConnNum i
 		if i < db.InitConnNum {
 			conn, err := db.newConn()
 			if err != nil {
-				// db.Close()
+				db.Close()
 				// 返回无连接的db实例，确保配置中有数据库服务有问题，kingshard也同样启动成功
 				return db, err
 			}
@@ -342,7 +342,7 @@ func (db *DB) GetConnFromIdle(cacheConns, idleConns chan *Conn) (*Conn, error) {
 			co, err = db.newConn()
 
 			if err != nil {
-				// db.Close()
+				db.Close()
 				return nil, err
 			}
 		} else {
