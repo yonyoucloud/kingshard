@@ -95,18 +95,18 @@ func (c *Conn) ReConnect() error {
 	c.pkg = mysql.NewPacketIO(tcpConn)
 
 	if err := c.readInitialHandshake(); err != nil {
-		c.conn.Close()
+		closeConn(c)
 		return err
 	}
 
 	if err := c.writeAuthHandshake(); err != nil {
-		c.conn.Close()
+		closeConn(c)
 
 		return err
 	}
 
 	if _, err := c.readOK(); err != nil {
-		c.conn.Close()
+		closeConn(c)
 
 		return err
 	}
@@ -114,13 +114,20 @@ func (c *Conn) ReConnect() error {
 	//we must always use autocommit
 	if !c.IsAutoCommit() {
 		if _, err := c.exec("set autocommit = 1"); err != nil {
-			c.conn.Close()
+			closeConn(c)
 
 			return err
 		}
 	}
 
 	return nil
+}
+
+func closeConn(c *Conn) {
+	if c.conn == nil {
+		return
+	}
+	c.conn.Close()
 }
 
 func (c *Conn) Close() error {

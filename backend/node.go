@@ -268,6 +268,7 @@ func (n *Node) UpSlave(addr string) error {
 	db, err := n.UpDB(addr)
 	if err != nil {
 		golog.Error("Node", "UpSlave", err.Error(), 0)
+		return err
 	}
 
 	n.Lock()
@@ -323,7 +324,11 @@ func (n *Node) ParseMaster(masterStr string) error {
 	}
 
 	n.Master, err = n.OpenDB(masterStr)
-	return err
+	// 配置中有数据库服务有问题，kingshard也同样启动成功，但报错到错误日志
+	if err != nil {
+		golog.Error("Node", "ParseMaster", err.Error(), 0)
+	}
+	return nil
 }
 
 //slaveStr(127.0.0.1:3306@2,192.168.0.12:3306@3)
@@ -354,7 +359,9 @@ func (n *Node) ParseSlave(slaveStr string) error {
 		}
 		n.SlaveWeights = append(n.SlaveWeights, weight)
 		if db, err = n.OpenDB(addrAndWeight[0]); err != nil {
-			return err
+			// 配置中有数据库服务有问题，kingshard也同样启动成功，但报错到错误日志
+			golog.Error("Node", "ParseSlave", err.Error(), 0)
+			// return err
 		}
 		n.Slave = append(n.Slave, db)
 	}

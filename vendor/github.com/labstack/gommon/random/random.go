@@ -2,24 +2,22 @@ package random
 
 import (
 	"math/rand"
-	"strings"
 	"time"
 )
 
 type (
 	Random struct {
+		charset Charset
 	}
+
+	Charset string
 )
 
-// Charsets
 const (
-	Uppercase    = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	Lowercase    = "abcdefghijklmnopqrstuvwxyz"
-	Alphabetic   = Uppercase + Lowercase
-	Numeric      = "0123456789"
-	Alphanumeric = Alphabetic + Numeric
-	Symbols      = "`" + `~!@#$%^&*()-_+={}[]|\;:"<>,./?`
-	Hex          = Numeric + "abcdef"
+	Alphanumeric Charset = Alphabetic + Numeric
+	Alphabetic   Charset = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	Numeric      Charset = "0123456789"
+	Hex          Charset = Numeric + "abcdef"
 )
 
 var (
@@ -28,21 +26,27 @@ var (
 
 func New() *Random {
 	rand.Seed(time.Now().UnixNano())
-	return new(Random)
+	return &Random{
+		charset: Alphanumeric,
+	}
 }
 
-func (r *Random) String(length uint8, charsets ...string) string {
-	charset := strings.Join(charsets, "")
-	if charset == "" {
-		charset = Alphanumeric
-	}
+func (r *Random) SetCharset(c Charset) {
+	r.charset = c
+}
+
+func (r *Random) String(length uint8) string {
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = charset[rand.Int63()%int64(len(charset))]
+		b[i] = r.charset[rand.Int63()%int64(len(r.charset))]
 	}
 	return string(b)
 }
 
-func String(length uint8, charsets ...string) string {
-	return global.String(length, charsets...)
+func SetCharset(c Charset) {
+	global.SetCharset(c)
+}
+
+func String(length uint8) string {
+	return global.String(length)
 }

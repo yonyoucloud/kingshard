@@ -82,52 +82,23 @@
 ```
 
     # server listen addr
-    addr : 0.0.0.0:9696
-
-    # prometheus server listen addr
-    prometheus_addr : 0.0.0.0:7080
+    addr : 127.0.0.1:9696
 
     # server user and password
-    user_list:
-    -
-        user :  root
-        password : root
-    -
-        user :  kingshard
-        password : kingshard
-
-    # the web api server
+    user :  kingshard
+    password : kingshard
+	# the web api server
     web_addr : 0.0.0.0:9797
     #HTTP Basic Auth
     web_user : admin
     web_password : admin
 
-    # if set log_path, the sql log will write into log_path/sql.log,the system log
-    # will write into log_path/sys.log
-    #log_path : /Users/flike/log
-
     # log level[debug|info|warn|error],default error
     log_level : debug
-
-    # if set log_sql(on|off) off,the sql log will not output
-    log_sql: on
-    
-    # only log the query that take more than slow_log_time ms
-    #slow_log_time : 100
-
-    # the path of blacklist sql file
-    # all these sqls in the file will been forbidden by kingshard
-    #blacklist_sql_file: /Users/flike/blacklist
-
     # only allow this ip list ip to connect kingshard
-    #allow_ips : 127.0.0.1,192.168.0.14
-
-    # the charset of kingshard, if you don't set this item
-    # the default charset of kingshard is utf8.
-    #proxy_charset: gbk
+    #allow_ips: 127.0.0.1
 
     # node is an agenda for real remote mysql server.
-
     nodes :
     -
         name : node1
@@ -167,10 +138,8 @@
         # 0 will no down
         down_after_noalive: 100
 
-    # schema defines sharding rules, the db is the sharding table database. 
-    schema_list :
-    -   
-        user: kingshard
+    # schema defines which db can be used by client and this db's sql will be executed in which nodes
+    schema :
         nodes: [node1,node2]
 		default: node1
         shard:
@@ -217,7 +186,7 @@
 
 ### 创建分表
 
-创建test_shard_hash分表(_0000~_0007), _0000~_0003在node1(mysqld2)上创建, _0004~_0007在node2(mysqld3)上创建。
+创建test_shard_hash分表(_0000~_0007), _0001~_0003在node1(mysqld2)上创建, _0004~_0007在node2(mysqld3)上创建。
 
     for i in `seq 0 3`;do /usr/bin/mysql -h 127.0.0.1 -P 3307 -u root -proot kingshard -e "CREATE TABLE IF NOT EXISTS test_shard_hash_000"${i}" ( id BIGINT(64) UNSIGNED  NOT NULL, str VARCHAR(256), f DOUBLE, e enum('test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8', 'test9', 'test10'), u tinyint unsigned, i tinyint, ni tinyint, PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8;";done
     for i in `seq 4 7`;do /usr/bin/mysql -h 127.0.0.1 -P 3308 -u root -proot kingshard -e "CREATE TABLE IF NOT EXISTS test_shard_hash_000"${i}" ( id BIGINT(64) UNSIGNED  NOT NULL, str VARCHAR(256), f DOUBLE, e enum('test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8', 'test9', 'test10'), u tinyint unsigned, i tinyint, ni tinyint, PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8;";done

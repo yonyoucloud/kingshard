@@ -69,16 +69,25 @@ func (s *ApiServer) DelAllowIps(c echo.Context) error {
 }
 
 type DBStatus struct {
-	Node      		string `json:"node"`
-	Address   		string `json:"address"`
-	Type      		string `json:"type"`
-	Status    		string `json:"status"`
-	LastPing  		string `json:"laste_ping"`
-	MaxConn   		int    `json:"max_conn"`
-	IdleConn  		int    `json:"idle_conn"`
-	CacheConn 		int    `json:"cache_conn"`
-	PushConnCount  	int64  `json:"push_conn_count"`
-	PopConnCount   	int64  `json:"pop_conn_count"`
+	Node          string `json:"node"`
+	Address       string `json:"address"`
+	Type          string `json:"type"`
+	Status        string `json:"status"`
+	LastPing      string `json:"laste_ping"`
+	MaxConn       int    `json:"max_conn"`
+	IdleConn      int    `json:"idle_conn"`
+	CacheConn     int    `json:"cache_conn"`
+	PushConnCount int64  `json:"push_conn_count"`
+	PopConnCount  int64  `json:"pop_conn_count"`
+}
+
+type ProxyConfig struct {
+	LogSql       string `json:"log_sql"`
+	SlowLogTime  int    `json:"slow_log_time"`
+	ClientConns  int64  `json:"client_conns"`
+	ClientQPS    int64  `json:"client_qps"`
+	ErrLogTotal  int64  `json:"errlog_total"`
+	SlowLogTotal int64  `json:"slow_Log_total"`
 }
 
 //get nodes status
@@ -89,8 +98,7 @@ func (s *ApiServer) GetNodesStatus(c echo.Context) error {
 	nodes := s.proxy.GetAllNodes()
 
 	for nodeName, node := range nodes {
-		//get master counter
-		idleConns,cacheConns,pushConnCount,popConnCount := node.Master.ConnCount()
+		idleConns, cacheConns, pushConnCount, popConnCount := node.Master.ConnCount()
 
 		//get master status
 		masterStatus.Node = nodeName
@@ -107,8 +115,7 @@ func (s *ApiServer) GetNodesStatus(c echo.Context) error {
 
 		//get slaves status
 		for _, slave := range node.Slave {
-			//get slave counter
-			idleConns,cacheConns,pushConnCount,popConnCount := slave.ConnCount()
+			idleConns, cacheConns, pushConnCount, popConnCount := slave.ConnCount()
 
 			slaveStatus.Node = nodeName
 			slaveStatus.Address = slave.Addr()
@@ -212,6 +219,17 @@ func (s *ApiServer) ChangeMasterStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, "ok")
 }
 
+func (s *ApiServer) GetProxyConfig(c echo.Context) error {
+	proxyConfig := ProxyConfig{}
+	proxyConfig.LogSql,
+		proxyConfig.SlowLogTime,
+		proxyConfig.ClientConns,
+		proxyConfig.ClientQPS,
+		proxyConfig.ErrLogTotal,
+		proxyConfig.SlowLogTotal = s.proxy.ProxyConfig()
+	return c.JSON(http.StatusOK, proxyConfig)
+}
+
 func (s *ApiServer) GetProxyStatus(c echo.Context) error {
 	status := s.proxy.Status()
 	return c.JSON(http.StatusOK, status)
@@ -253,7 +271,7 @@ type ShardConfig struct {
 
 func (s *ApiServer) GetProxySchema(c echo.Context) error {
 	shardConfig := make([]ShardConfig, 0, 10)
-	for _, schema := range s.cfg.SchemaList{
+	for _, schema := range s.cfg.SchemaList {
 		//append default rule
 		shardConfig = append(shardConfig,
 			ShardConfig{
@@ -264,7 +282,7 @@ func (s *ApiServer) GetProxySchema(c echo.Context) error {
 		for _, r := range schema.ShardRule {
 			shardConfig = append(shardConfig,
 				ShardConfig{
-					User:		   schema.User,
+					User:          schema.User,
 					DB:            r.DB,
 					Table:         r.Table,
 					Key:           r.Key,

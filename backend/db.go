@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/flike/kingshard/core/errors"
+	"github.com/flike/kingshard/core/golog"
 	"github.com/flike/kingshard/mysql"
 )
 
@@ -43,15 +44,15 @@ type DB struct {
 	db       string
 	state    int32
 
-	maxConnNum  int
+	maxConnNum  int // 总连接数
 	InitConnNum int
-	idleConns   chan *Conn
-	cacheConns  chan *Conn
+	idleConns   chan *Conn // 空闲数
+	cacheConns  chan *Conn // 缓存数，使用数=总连接数-空闲数-缓存数
 	checkConn   *Conn
 	lastPing    int64
 
-	pushConnCount    int64
-	popConnCount     int64
+	pushConnCount int64
+	popConnCount  int64
 }
 
 func Open(addr string, user string, password string, dbName string, maxConnNum int) (*DB, error) {
@@ -76,8 +77,9 @@ func Open(addr string, user string, password string, dbName string, maxConnNum i
 	//check connection
 	db.checkConn, err = db.newConn()
 	if err != nil {
-		db.Close()
-		return nil, err
+		// db.Close()
+		// 返回无连接的db实例，确保配置中有数据库服务有问题，kingshard也同样启动成功
+		return db, err
 	}
 
 	db.idleConns = make(chan *Conn, db.maxConnNum)
@@ -87,19 +89,17 @@ func Open(addr string, user string, password string, dbName string, maxConnNum i
 	for i := 0; i < db.maxConnNum; i++ {
 		if i < db.InitConnNum {
 			conn, err := db.newConn()
-
 			if err != nil {
-				db.Close()
-				return nil, err
+				// db.Close()
+				// 返回无连接的db实例，确保配置中有数据库服务有问题，kingshard也同样启动成功
+				return db, err
 			}
-
 			db.cacheConns <- conn
-			atomic.AddInt64(&db.pushConnCount, 1)
 		} else {
 			conn := new(Conn)
 			db.idleConns <- conn
-			atomic.AddInt64(&db.pushConnCount, 1)
 		}
+		atomic.AddInt64(&db.pushConnCount, 1)
 	}
 	db.SetLastPing()
 
@@ -109,8 +109,8 @@ func Open(addr string, user string, password string, dbName string, maxConnNum i
 func (db *DB) newCheckConn(conn *Conn) {
 	go func() {
 		select {
-		case <- conn.checkChannel:
-		case <- time.After(time.Second * 60 * 5):
+		case <-conn.checkChannel:
+		case <-time.After(time.Second * 60 * 5):
 			conn := new(Conn)
 			db.idleConns <- conn
 			atomic.AddInt64(&db.pushConnCount, 1)
@@ -136,10 +136,10 @@ func (db *DB) State() string {
 	return state
 }
 
-func (db *DB) ConnCount() (int,int,int64,int64) {
+func (db *DB) ConnCount() (int, int, int64, int64) {
 	db.RLock()
 	defer db.RUnlock()
-	return len(db.idleConns),len(db.cacheConns),db.pushConnCount,db.popConnCount
+	return len(db.idleConns), len(db.cacheConns), db.pushConnCount, db.popConnCount
 }
 
 func (db *DB) Close() error {
@@ -156,6 +156,7 @@ func (db *DB) Close() error {
 	close(cacheChannel)
 	for conn := range cacheChannel {
 		db.closeConn(conn)
+		conn = nil
 	}
 	close(idleChannel)
 
@@ -198,7 +199,7 @@ func (db *DB) Ping() error {
 	}
 	err = db.checkConn.Ping()
 	if err != nil {
-		if db.checkConn != nil{
+		if db.checkConn != nil {
 			db.checkConn.Close()
 			db.checkConn = nil
 		}
@@ -216,7 +217,6 @@ func (db *DB) newConn() (*Conn, error) {
 
 	co.pushTimestamp = time.Now().Unix()
 	co.checkChannel = make(chan int64)
-
 	return co, nil
 }
 
@@ -244,9 +244,9 @@ func (db *DB) tryReuse(co *Conn) error {
 	if err != nil {
 		db.closeConn(co)
 		co, err = db.newConn()
-	
+
 		if err != nil {
-			db.Close()
+			// db.Close()
 			return err
 		}
 	}
@@ -299,6 +299,7 @@ func (db *DB) PopConn() (*Conn, error) {
 	err = db.tryReuse(co)
 	if err != nil {
 		db.closeConn(co)
+		co = nil
 		return nil, err
 	}
 
@@ -332,9 +333,31 @@ func (db *DB) GetConnFromIdle(cacheConns, idleConns chan *Conn) (*Conn, error) {
 	var err error
 	select {
 	case co = <-idleConns:
-		co, err := db.newConn()
+		// 当空闲连接变成0时，如果执行上下线操作，co会是nil，避免空指针报错需要判断
+		if co == nil {
+			return nil, errors.ErrConnIsNil
+		}
+		// 这种情况说明有节点突然宕机，这时co的数据会发生变化，根据地址变空做判断，此时需要重新申请链接
+		if co.addr == "" {
+			co, err = db.newConn()
+
+			if err != nil {
+				// db.Close()
+				return nil, err
+			}
+		} else {
+			err = co.Connect(db.addr, db.user, db.password, db.db)
+			if err != nil {
+				golog.Error("db", "GetConnFromIdle", err.Error(), 0,
+					"addr", db.addr,
+					"db", db.db, "user", db.user,
+				)
+			}
+		}
+
 		if err != nil {
 			db.closeConn(co)
+			co = nil
 			return nil, err
 		}
 		return co, nil
@@ -346,6 +369,7 @@ func (db *DB) GetConnFromIdle(cacheConns, idleConns chan *Conn) (*Conn, error) {
 			err = co.Ping()
 			if err != nil {
 				db.closeConn(co)
+				co = nil
 				return nil, errors.ErrBadConn
 			}
 		}
@@ -364,16 +388,18 @@ func (db *DB) PushConn(co *Conn, err error) {
 	}
 	if err != nil {
 		db.closeConn(co)
+		co = nil
 		return
 	}
 	co.pushTimestamp = time.Now().Unix()
 	select {
 	case conns <- co:
-		co.checkChannel <- co.pushTimestamp 
+		co.checkChannel <- co.pushTimestamp
 		atomic.AddInt64(&db.pushConnCount, 1)
 		return
 	default:
 		db.closeConn(co)
+		co = nil
 		return
 	}
 }
@@ -387,6 +413,7 @@ func (p *BackendConn) Close() {
 	if p != nil && p.Conn != nil {
 		if p.Conn.pkgErr != nil {
 			p.db.closeConn(p.Conn)
+			p.Conn = nil
 		} else {
 			p.db.PushConn(p.Conn, nil)
 		}

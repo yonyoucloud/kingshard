@@ -546,65 +546,64 @@ func makeList(start, end int) []int {
 	return list
 }
 
-//indexes is sequential
 //if value is 2016, and indexs is [2015,2016,2017]
 //the result is [2015,2016]
-func makeLeList(value int, indexes []int) []int {
-	for k, v := range indexes {
+func makeLeList(value int, indexs []int) []int {
+	sort.Ints(indexs)
+	for k, v := range indexs {
 		if v == value {
-			return indexes[:k+1]
+			return indexs[:k+1]
 		}
 	}
 	return nil
 }
 
-//indexes is sequential
 //if value is 2016, and indexs is [2015,2016,2017,2018]
 //the result is [2016,2017,2018]
-func makeGeList(value int, indexes []int) []int {
-	for k, v := range indexes {
+func makeGeList(value int, indexs []int) []int {
+	sort.Ints(indexs)
+	for k, v := range indexs {
 		if v == value {
-			return indexes[k:]
+			return indexs[k:]
 		}
 	}
 	return nil
 }
 
-//indexes is sequential
 //if value is 2016, and indexs is [2015,2016,2017,2018]
 //the result is [2015]
-func makeLtList(value int, indexes []int) []int {
-	for k, v := range indexes {
+func makeLtList(value int, indexs []int) []int {
+	sort.Ints(indexs)
+	for k, v := range indexs {
 		if v == value {
-			return indexes[:k]
+			return indexs[:k]
 		}
 	}
 	return nil
 }
 
-//indexes is sequential
 //if value is 2016, and indexs is [2015,2016,2017,2018]
 //the result is [2017,2018]
-func makeGtList(value int, indexes []int) []int {
-	for k, v := range indexes {
+func makeGtList(value int, indexs []int) []int {
+	sort.Ints(indexs)
+	for k, v := range indexs {
 		if v == value {
-			return indexes[k+1:]
+			return indexs[k+1:]
 		}
 	}
 	return nil
 }
 
-//indexes is sequential
 //if start is 2016, end is 2017. indexs is [2015,2016,2017,2018]
 //the result is [2016,2017]
-func makeBetweenList(start, end int, indexes []int) []int {
+func makeBetweenList(start, end int, indexs []int) []int {
 	var startIndex, endIndex int
 	var SetStart bool
 	if end < start {
 		start, end = end, start
 	}
-
-	for k, v := range indexes {
+	sort.Ints(indexs)
+	for k, v := range indexs {
 		if v == start {
 			startIndex = k
 			SetStart = true
@@ -612,7 +611,7 @@ func makeBetweenList(start, end int, indexes []int) []int {
 		if v == end {
 			endIndex = k
 			if SetStart {
-				return indexes[startIndex : endIndex+1]
+				return indexs[startIndex : endIndex+1]
 			}
 		}
 	}

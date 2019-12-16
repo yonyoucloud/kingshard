@@ -47,10 +47,7 @@ curl -X GET \
         "status": "up",
         "laste_ping": "2016-09-24 17:17:52 +0800 CST",
         "max_conn": 32,
-        "idle_conn": 8,
-        "cache_conn":12,
-        "push_conn_count":32,
-        "pop_conn_count":0
+        "idle_conn": 8
     },
     {
         "node": "node2",
@@ -59,10 +56,7 @@ curl -X GET \
         "status": "up",
         "laste_ping": "2016-09-24 17:17:52 +0800 CST",
         "max_conn": 32,
-        "idle_conn": 8,
-        "cache_conn":12,
-        "push_conn_count":32,
-        "pop_conn_count":0
+        "idle_conn": 8
     }
 ]
 ```
@@ -351,7 +345,7 @@ URL：http://127.0.0.1:9797/api/v1/proxy/allow_ips
 curl -X POST \
   -H 'Content-Type: application/json' \
   -u admin:admin \
-  -d '{"allow_ips":["127.0.0.1","192.168.14.0/24","192.168.0.223"]}' \
+  -d '{"allow_ips":["127.0.0.1","192.168.0.14","192.168.0.223"]}' \
   127.0.0.1:9797/api/v1/proxy/allow_ips
   返回结果："ok"
  

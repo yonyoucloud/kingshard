@@ -26,7 +26,7 @@ import (
 
 	"github.com/flike/kingshard/config"
 	"github.com/flike/kingshard/core/golog"
-	"github.com/flike/kingshard/monitor"
+	"github.com/flike/kingshard/core/hack"
 	"github.com/flike/kingshard/proxy/server"
 	"github.com/flike/kingshard/web"
 )
@@ -39,11 +39,6 @@ const (
 	sqlLogName = "sql.log"
 	sysLogName = "sys.log"
 	MaxLogSize = 1024 * 1024 * 1024
-)
-
-var (
-	BuildDate    string
-	BuildVersion string
 )
 
 const banner string = `
@@ -59,8 +54,8 @@ func main() {
 	fmt.Print(banner)
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	flag.Parse()
-	fmt.Printf("Git commit:%s\n", BuildVersion)
-	fmt.Printf("Build time:%s\n", BuildDate)
+	fmt.Printf("Git commit:%s\n", hack.Version)
+	fmt.Printf("Build time:%s\n", hack.Compile)
 	if *version {
 		return
 	}
@@ -102,7 +97,6 @@ func main() {
 
 	var svr *server.Server
 	var apiSvr *web.ApiServer
-	var prometheusSvr *monitor.Prometheus
 	svr, err = server.NewServer(cfg)
 	if err != nil {
 		golog.Error("main", "main", err.Error(), 0)
@@ -111,14 +105,6 @@ func main() {
 		return
 	}
 	apiSvr, err = web.NewApiServer(cfg, svr)
-	if err != nil {
-		golog.Error("main", "main", err.Error(), 0)
-		golog.GlobalSysLogger.Close()
-		golog.GlobalSqlLogger.Close()
-		svr.Close()
-		return
-	}
-	prometheusSvr, err = monitor.NewPrometheus(cfg.PrometheusAddr, svr)
 	if err != nil {
 		golog.Error("main", "main", err.Error(), 0)
 		golog.GlobalSysLogger.Close()
@@ -158,7 +144,6 @@ func main() {
 		}
 	}()
 	go apiSvr.Run()
-	go prometheusSvr.Run()
 	svr.Run()
 }
 

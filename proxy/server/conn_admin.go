@@ -451,20 +451,20 @@ func (c *ClientConn) handleShowNodeConfig() (*mysql.Resultset, error) {
 		"LastPing",
 		"MaxConn",
 		"IdleConn",
-		"CacheConns",
+		"CacheConn",
 		"PushConnCount",
 		"PopConnCount",
 	}
 	var rows [][]string
 	const (
-		Column = 10
+		Column = 7
 	)
 
 	//var nodeRows [][]string
 	for name, node := range c.schema.nodes {
 		//"master"
-		idleConns,cacheConns,pushConnCount,popConnCount := node.Master.ConnCount()
-		
+		idleConns, cacheConns, pushConnCount, popConnCount := node.Master.ConnCount()
+
 		rows = append(
 			rows,
 			[]string{
@@ -482,7 +482,7 @@ func (c *ClientConn) handleShowNodeConfig() (*mysql.Resultset, error) {
 		//"slave"
 		for _, slave := range node.Slave {
 			if slave != nil {
-				idleConns,cacheConns,pushConnCount,popConnCount := slave.ConnCount()
+				idleConns, cacheConns, pushConnCount, popConnCount := slave.ConnCount()
 
 				rows = append(
 					rows,
@@ -583,16 +583,16 @@ func (c *ClientConn) handleShowAllowIPConfig() (*mysql.Resultset, error) {
 	}
 
 	//allow ips
-	current, _, _ := c.proxy.allowipsIndex.Get()
-	var allowips = c.proxy.allowips[current]
+	var allowips = c.proxy.allowips[c.proxy.allowipsIndex]
 	if len(allowips) != 0 {
 		for _, v := range allowips {
-			if v.Info() != "" {
-				rows = append(rows,
-					[]string{
-						v.Info(),
-					})
+			if v == nil {
+				continue
 			}
+			rows = append(rows,
+				[]string{
+					v.String(),
+				})
 		}
 	}
 

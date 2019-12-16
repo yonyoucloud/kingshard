@@ -16,43 +16,43 @@ type (
 
 		// AllowOrigin defines a list of origins that may access the resource.
 		// Optional. Default value []string{"*"}.
-		AllowOrigins []string `yaml:"allow_origins"`
+		AllowOrigins []string `json:"allow_origins"`
 
 		// AllowMethods defines a list methods allowed when accessing the resource.
 		// This is used in response to a preflight request.
 		// Optional. Default value DefaultCORSConfig.AllowMethods.
-		AllowMethods []string `yaml:"allow_methods"`
+		AllowMethods []string `json:"allow_methods"`
 
 		// AllowHeaders defines a list of request headers that can be used when
-		// making the actual request. This is in response to a preflight request.
+		// making the actual request. This in response to a preflight request.
 		// Optional. Default value []string{}.
-		AllowHeaders []string `yaml:"allow_headers"`
+		AllowHeaders []string `json:"allow_headers"`
 
 		// AllowCredentials indicates whether or not the response to the request
 		// can be exposed when the credentials flag is true. When used as part of
 		// a response to a preflight request, this indicates whether or not the
 		// actual request can be made using credentials.
 		// Optional. Default value false.
-		AllowCredentials bool `yaml:"allow_credentials"`
+		AllowCredentials bool `json:"allow_credentials"`
 
 		// ExposeHeaders defines a whitelist headers that clients are allowed to
 		// access.
 		// Optional. Default value []string{}.
-		ExposeHeaders []string `yaml:"expose_headers"`
+		ExposeHeaders []string `json:"expose_headers"`
 
 		// MaxAge indicates how long (in seconds) the results of a preflight request
 		// can be cached.
 		// Optional. Default value 0.
-		MaxAge int `yaml:"max_age"`
+		MaxAge int `json:"max_age"`
 	}
 )
 
 var (
 	// DefaultCORSConfig is the default CORS middleware config.
 	DefaultCORSConfig = CORSConfig{
-		Skipper:      DefaultSkipper,
+		Skipper:      defaultSkipper,
 		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
+		AllowMethods: []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
 	}
 )
 
@@ -75,7 +75,6 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 	if len(config.AllowMethods) == 0 {
 		config.AllowMethods = DefaultCORSConfig.AllowMethods
 	}
-
 	allowMethods := strings.Join(config.AllowMethods, ",")
 	allowHeaders := strings.Join(config.AllowHeaders, ",")
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
@@ -89,25 +88,25 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
-			origin := req.Header.Get(echo.HeaderOrigin)
-			allowOrigin := ""
+			origin := req.Header().Get(echo.HeaderOrigin)
+			originSet := req.Header().Contains(echo.HeaderOrigin) // Issue #517
 
 			// Check allowed origins
+			allowedOrigin := ""
 			for _, o := range config.AllowOrigins {
-				if o == "*" && config.AllowCredentials {
-					allowOrigin = origin
-					break
-				}
 				if o == "*" || o == origin {
-					allowOrigin = o
+					allowedOrigin = o
 					break
 				}
 			}
 
 			// Simple request
-			if req.Method != http.MethodOptions {
+			if req.Method() != echo.OPTIONS {
 				res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
-				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
+				if !originSet || allowedOrigin == "" {
+					return next(c)
+				}
+				res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
 				if config.AllowCredentials {
 					res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
 				}
@@ -121,7 +120,10 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			res.Header().Add(echo.HeaderVary, echo.HeaderOrigin)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestMethod)
 			res.Header().Add(echo.HeaderVary, echo.HeaderAccessControlRequestHeaders)
-			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowOrigin)
+			if !originSet || allowedOrigin == "" {
+				return next(c)
+			}
+			res.Header().Set(echo.HeaderAccessControlAllowOrigin, allowedOrigin)
 			res.Header().Set(echo.HeaderAccessControlAllowMethods, allowMethods)
 			if config.AllowCredentials {
 				res.Header().Set(echo.HeaderAccessControlAllowCredentials, "true")
@@ -129,7 +131,7 @@ func CORSWithConfig(config CORSConfig) echo.MiddlewareFunc {
 			if allowHeaders != "" {
 				res.Header().Set(echo.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
-				h := req.Header.Get(echo.HeaderAccessControlRequestHeaders)
+				h := req.Header().Get(echo.HeaderAccessControlRequestHeaders)
 				if h != "" {
 					res.Header().Set(echo.HeaderAccessControlAllowHeaders, h)
 				}

@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 type (
-	// Bytes struct
-	Bytes struct{}
+	Bytes struct {
+	}
 )
 
 const (
-	_ = 1.0 << (10 * iota) // ignore first value by assigning to blank identifier
+	B = 1 << (10 * iota)
 	KB
 	MB
 	GB
@@ -23,7 +22,7 @@ const (
 )
 
 var (
-	pattern = regexp.MustCompile(`(?i)^(-?\d+(?:\.\d+)?)\s?([KMGTPE]B?|B?)$`)
+	pattern = regexp.MustCompile(`(?i)^(-?\d+)([KMGTP]B?|B)$`)
 	global  = New()
 )
 
@@ -39,31 +38,29 @@ func (*Bytes) Format(b int64) string {
 	value := float64(b)
 
 	switch {
-	case b >= EB:
-		value /= EB
-		multiple = "EB"
-	case b >= PB:
-		value /= PB
-		multiple = "PB"
-	case b >= TB:
-		value /= TB
-		multiple = "TB"
-	case b >= GB:
-		value /= GB
-		multiple = "GB"
-	case b >= MB:
-		value /= MB
-		multiple = "MB"
-	case b >= KB:
+	case b < KB:
+		return strconv.FormatInt(b, 10) + "B"
+	case b < MB:
 		value /= KB
 		multiple = "KB"
-	case b == 0:
-		return "0"
-	default:
-		return strconv.FormatInt(b, 10) + "B"
+	case b < MB:
+		value /= KB
+		multiple = "KB"
+	case b < GB:
+		value /= MB
+		multiple = "MB"
+	case b < TB:
+		value /= GB
+		multiple = "GB"
+	case b < PB:
+		value /= TB
+		multiple = "TB"
+	case b < EB:
+		value /= PB
+		multiple = "PB"
 	}
 
-	return fmt.Sprintf("%.2f%s", value, multiple)
+	return fmt.Sprintf("%.02f%s", value, multiple)
 }
 
 // Parse parses human readable bytes string to bytes integer.
@@ -74,28 +71,28 @@ func (*Bytes) Parse(value string) (i int64, err error) {
 		return 0, fmt.Errorf("error parsing value=%s", value)
 	}
 	bytesString := parts[1]
-	multiple := strings.ToUpper(parts[2])
-	bytes, err := strconv.ParseFloat(bytesString, 64)
+	multiple := parts[2]
+	bytes, err := strconv.ParseInt(bytesString, 10, 64)
 	if err != nil {
 		return
 	}
 
 	switch multiple {
-	default:
-		return int64(bytes), nil
+	case "B":
+		return bytes * B, nil
 	case "K", "KB":
-		return int64(bytes * KB), nil
+		return bytes * KB, nil
 	case "M", "MB":
-		return int64(bytes * MB), nil
+		return bytes * MB, nil
 	case "G", "GB":
-		return int64(bytes * GB), nil
+		return bytes * GB, nil
 	case "T", "TB":
-		return int64(bytes * TB), nil
+		return bytes * TB, nil
 	case "P", "PB":
-		return int64(bytes * PB), nil
-	case "E", "EB":
-		return int64(bytes * EB), nil
+		return bytes * PB, nil
 	}
+
+	return
 }
 
 // Format wraps global Bytes's Format function.

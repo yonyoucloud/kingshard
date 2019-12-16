@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"encoding/base64"
-	"strconv"
-	"strings"
 
 	"github.com/labstack/echo"
 )
@@ -17,33 +15,28 @@ type (
 		// Validator is a function to validate BasicAuth credentials.
 		// Required.
 		Validator BasicAuthValidator
-
-		// Realm is a string to define realm attribute of BasicAuth.
-		// Default value "Restricted".
-		Realm string
 	}
 
 	// BasicAuthValidator defines a function to validate BasicAuth credentials.
-	BasicAuthValidator func(string, string, echo.Context) (bool, error)
+	BasicAuthValidator func(string, string) bool
 )
 
 const (
-	basic        = "basic"
-	defaultRealm = "Restricted"
+	basic = "Basic"
 )
 
 var (
 	// DefaultBasicAuthConfig is the default BasicAuth middleware config.
 	DefaultBasicAuthConfig = BasicAuthConfig{
-		Skipper: DefaultSkipper,
-		Realm:   defaultRealm,
+		Skipper: defaultSkipper,
 	}
 )
 
 // BasicAuth returns an BasicAuth middleware.
 //
 // For valid credentials it calls the next handler.
-// For missing or invalid credentials, it sends "401 - Unauthorized" response.
+// For invalid credentials, it sends "401 - Unauthorized" response.
+// For empty or invalid `Authorization` header, it sends "400 - Bad Request" response.
 func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 	c := DefaultBasicAuthConfig
 	c.Validator = fn
@@ -55,13 +48,10 @@ func BasicAuth(fn BasicAuthValidator) echo.MiddlewareFunc {
 func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 	// Defaults
 	if config.Validator == nil {
-		panic("echo: basic-auth middleware requires a validator function")
+		panic("basic-auth middleware requires validator function")
 	}
 	if config.Skipper == nil {
 		config.Skipper = DefaultBasicAuthConfig.Skipper
-	}
-	if config.Realm == "" {
-		config.Realm = defaultRealm
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -70,10 +60,10 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			auth := c.Request().Header.Get(echo.HeaderAuthorization)
+			auth := c.Request().Header().Get(echo.HeaderAuthorization)
 			l := len(basic)
 
-			if len(auth) > l+1 && strings.ToLower(auth[:l]) == basic {
+			if len(auth) > l+1 && auth[:l] == basic {
 				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
 				if err != nil {
 					return err
@@ -82,24 +72,14 @@ func BasicAuthWithConfig(config BasicAuthConfig) echo.MiddlewareFunc {
 				for i := 0; i < len(cred); i++ {
 					if cred[i] == ':' {
 						// Verify credentials
-						valid, err := config.Validator(cred[:i], cred[i+1:], c)
-						if err != nil {
-							return err
-						} else if valid {
+						if config.Validator(cred[:i], cred[i+1:]) {
 							return next(c)
 						}
-						break
 					}
 				}
 			}
-
-			realm := defaultRealm
-			if config.Realm != defaultRealm {
-				realm = strconv.Quote(config.Realm)
-			}
-
 			// Need to return `401` for browsers to pop-up login box.
-			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm="+realm)
+			c.Response().Header().Set(echo.HeaderWWWAuthenticate, basic+" realm=Restricted")
 			return echo.ErrUnauthorized
 		}
 	}

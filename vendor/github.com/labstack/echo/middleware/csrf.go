@@ -18,7 +18,7 @@ type (
 		Skipper Skipper
 
 		// TokenLength is the length of the generated token.
-		TokenLength uint8 `yaml:"token_length"`
+		TokenLength uint8 `json:"token_length"`
 		// Optional. Default value 32.
 
 		// TokenLookup is a string in the form of "<source>:<key>" that is used
@@ -28,35 +28,35 @@ type (
 		// - "header:<name>"
 		// - "form:<name>"
 		// - "query:<name>"
-		TokenLookup string `yaml:"token_lookup"`
+		TokenLookup string `json:"token_lookup"`
 
 		// Context key to store generated CSRF token into context.
 		// Optional. Default value "csrf".
-		ContextKey string `yaml:"context_key"`
+		ContextKey string `json:"context_key"`
 
 		// Name of the CSRF cookie. This cookie will store CSRF token.
 		// Optional. Default value "csrf".
-		CookieName string `yaml:"cookie_name"`
+		CookieName string `json:"cookie_name"`
 
 		// Domain of the CSRF cookie.
 		// Optional. Default value none.
-		CookieDomain string `yaml:"cookie_domain"`
+		CookieDomain string `json:"cookie_domain"`
 
 		// Path of the CSRF cookie.
 		// Optional. Default value none.
-		CookiePath string `yaml:"cookie_path"`
+		CookiePath string `json:"cookie_path"`
 
 		// Max age (in seconds) of the CSRF cookie.
 		// Optional. Default value 86400 (24hr).
-		CookieMaxAge int `yaml:"cookie_max_age"`
+		CookieMaxAge int `json:"cookie_max_age"`
 
 		// Indicates if CSRF cookie is secure.
 		// Optional. Default value false.
-		CookieSecure bool `yaml:"cookie_secure"`
+		CookieSecure bool `json:"cookie_secure"`
 
 		// Indicates if CSRF cookie is HTTP only.
 		// Optional. Default value false.
-		CookieHTTPOnly bool `yaml:"cookie_http_only"`
+		CookieHTTPOnly bool `json:"cookie_http_only"`
 	}
 
 	// csrfTokenExtractor defines a function that takes `echo.Context` and returns
@@ -67,7 +67,7 @@ type (
 var (
 	// DefaultCSRFConfig is the default CSRF middleware config.
 	DefaultCSRFConfig = CSRFConfig{
-		Skipper:      DefaultSkipper,
+		Skipper:      defaultSkipper,
 		TokenLength:  32,
 		TokenLookup:  "header:" + echo.HeaderXCSRFToken,
 		ContextKey:   "csrf",
@@ -126,40 +126,40 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 			k, err := c.Cookie(config.CookieName)
 			token := ""
 
-			// Generate token
 			if err != nil {
+				// Generate token
 				token = random.String(config.TokenLength)
 			} else {
 				// Reuse token
-				token = k.Value
+				token = k.Value()
 			}
 
-			switch req.Method {
-			case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
+			switch req.Method() {
+			case echo.GET, echo.HEAD, echo.OPTIONS, echo.TRACE:
 			default:
 				// Validate token only for requests which are not defined as 'safe' by RFC7231
 				clientToken, err := extractor(c)
 				if err != nil {
-					return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+					return err
 				}
 				if !validateCSRFToken(token, clientToken) {
-					return echo.NewHTTPError(http.StatusForbidden, "invalid csrf token")
+					return echo.NewHTTPError(http.StatusForbidden, "csrf token is invalid")
 				}
 			}
 
 			// Set CSRF cookie
-			cookie := new(http.Cookie)
-			cookie.Name = config.CookieName
-			cookie.Value = token
+			cookie := new(echo.Cookie)
+			cookie.SetName(config.CookieName)
+			cookie.SetValue(token)
 			if config.CookiePath != "" {
-				cookie.Path = config.CookiePath
+				cookie.SetPath(config.CookiePath)
 			}
 			if config.CookieDomain != "" {
-				cookie.Domain = config.CookieDomain
+				cookie.SetDomain(config.CookieDomain)
 			}
-			cookie.Expires = time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second)
-			cookie.Secure = config.CookieSecure
-			cookie.HttpOnly = config.CookieHTTPOnly
+			cookie.SetExpires(time.Now().Add(time.Duration(config.CookieMaxAge) * time.Second))
+			cookie.SetSecure(config.CookieSecure)
+			cookie.SetHTTPOnly(config.CookieHTTPOnly)
 			c.SetCookie(cookie)
 
 			// Store token in the context
@@ -177,7 +177,7 @@ func CSRFWithConfig(config CSRFConfig) echo.MiddlewareFunc {
 // provided request header.
 func csrfTokenFromHeader(header string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
-		return c.Request().Header.Get(header), nil
+		return c.Request().Header().Get(header), nil
 	}
 }
 
@@ -187,7 +187,7 @@ func csrfTokenFromForm(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.FormValue(param)
 		if token == "" {
-			return "", errors.New("missing csrf token in the form parameter")
+			return "", errors.New("empty csrf token in form param")
 		}
 		return token, nil
 	}
@@ -199,7 +199,7 @@ func csrfTokenFromQuery(param string) csrfTokenExtractor {
 	return func(c echo.Context) (string, error) {
 		token := c.QueryParam(param)
 		if token == "" {
-			return "", errors.New("missing csrf token in the query string")
+			return "", errors.New("empty csrf token in query param")
 		}
 		return token, nil
 	}

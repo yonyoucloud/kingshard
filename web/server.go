@@ -14,13 +14,15 @@
 package web
 
 import (
+	"time"
+
 	"github.com/flike/kingshard/config"
 	"github.com/flike/kingshard/core/golog"
 	"github.com/flike/kingshard/proxy/server"
 	"github.com/labstack/echo"
-	"github.com/labstack/gommon/log"
-	//"github.com/labstack/echo/engine/standard"
+	"github.com/labstack/echo/engine/standard"
 	mw "github.com/labstack/echo/middleware"
+	"github.com/tylerb/graceful"
 )
 
 type ApiServer struct {
@@ -29,7 +31,7 @@ type ApiServer struct {
 	webAddr     string
 	webUser     string
 	webPassword string
-	web *echo.Echo
+	*echo.Echo
 }
 
 func NewApiServer(cfg *config.Config, srv *server.Server) (*ApiServer, error) {
@@ -39,7 +41,7 @@ func NewApiServer(cfg *config.Config, srv *server.Server) (*ApiServer, error) {
 	s.webAddr = cfg.WebAddr
 	s.webUser = cfg.WebUser
 	s.webPassword = cfg.WebPassword
-	s.web = echo.New()
+	s.Echo = echo.New()
 	golog.Info("web", "NewApiServer", "Api Server running", 0,
 		"netProto",
 		"http",
@@ -49,67 +51,61 @@ func NewApiServer(cfg *config.Config, srv *server.Server) (*ApiServer, error) {
 }
 
 func (s *ApiServer) Run() error {
-	s.web.HideBanner = true
-	s.web.HidePort = true
-
 	s.RegisterMiddleware()
 	s.RegisterURL()
-	//std := standard.New(s.webAddr)
-	//std.SetHandler(s)
-	//graceful.ListenAndServe(std.Server, 5*time.Second)
-	//return nil
-	err := s.web.Start(s.webAddr)
-	if err != nil {
-		log.Errorf("AdminServer.Start:web server start error,err:%s", err)
-	}
+	std := standard.New(s.webAddr)
+	std.SetHandler(s)
+	graceful.ListenAndServe(std.Server, 5*time.Second)
 	return nil
 }
 
 func (s *ApiServer) RegisterMiddleware() {
 	//s.Use(mw.Logger())
-	s.web.Use(mw.LoggerWithConfig(mw.LoggerConfig{
+	s.Use(mw.LoggerWithConfig(mw.LoggerConfig{
 		Format: `{"time":"${time_rfc3339}","remote_ip":"${remote_ip}",` +
 			`"method":"${method}","uri":"${uri}","status":${status}, "latency":${latency},` +
 			`"latency_human":"${latency_human}","bytes_in":${bytes_in},` +
 			`"bytes_out":${bytes_out}}` + "\n",
 		Output: golog.GlobalSqlLogger,
 	}))
-	s.web.Use(mw.Recover())
-	s.web.Use(mw.BasicAuth(s.CheckAuth))
+	s.Use(mw.Recover())
+	s.Use(mw.BasicAuth(s.CheckAuth))
 }
 
 func (s *ApiServer) RegisterURL() {
-	s.web.GET("/api/v1/nodes/status", s.GetNodesStatus)
+	s.Get("/api/v1/nodes/status", s.GetNodesStatus)
 
-	s.web.POST("/api/v1/nodes/slaves", s.AddOneSlave)
-	s.web.DELETE("/api/v1/nodes/slaves", s.DeleteOneSlave)
-	s.web.PUT("/api/v1/nodes/slaves/status", s.ChangeSlaveStatus)
+	s.Post("/api/v1/nodes/slaves", s.AddOneSlave)
+	s.Delete("/api/v1/nodes/slaves", s.DeleteOneSlave)
+	s.Put("/api/v1/nodes/slaves/status", s.ChangeSlaveStatus)
 
-	s.web.PUT("/api/v1/nodes/masters/status", s.ChangeMasterStatus)
+	s.Put("/api/v1/nodes/masters/status", s.ChangeMasterStatus)
 
-	s.web.GET("/api/v1/proxy/status", s.GetProxyStatus)
-	s.web.PUT("/api/v1/proxy/status", s.ChangeProxyStatus)
+	s.Get("/api/v1/proxy/config", s.GetProxyConfig)
 
-	s.web.GET("/api/v1/proxy/schema", s.GetProxySchema)
+	s.Get("/api/v1/proxy/status", s.GetProxyStatus)
+	s.Put("/api/v1/proxy/status", s.ChangeProxyStatus)
 
-	s.web.GET("/api/v1/proxy/allow_ips", s.GetAllowIps)
-	s.web.POST("/api/v1/proxy/allow_ips", s.AddAllowIps)
-	s.web.DELETE("/api/v1/proxy/allow_ips", s.DelAllowIps)
+	s.Get("/api/v1/proxy/schema", s.GetProxySchema)
 
-	s.web.GET("/api/v1/proxy/black_sqls", s.GetAllBlackSQL)
-	s.web.POST("/api/v1/proxy/black_sqls", s.AddOneBlackSQL)
-	s.web.DELETE("/api/v1/proxy/black_sqls", s.DelOneBlackSQL)
+	s.Get("/api/v1/proxy/allow_ips", s.GetAllowIps)
+	s.Post("/api/v1/proxy/allow_ips", s.AddAllowIps)
+	s.Delete("/api/v1/proxy/allow_ips", s.DelAllowIps)
 
-	s.web.GET("/api/v1/proxy/slow_sql/time", s.GetSlowLogTime)
-	s.web.PUT("/api/v1/proxy/slow_sql/status", s.SwitchSlowSQL)
-	s.web.PUT("/api/v1/proxy/slow_sql/time", s.SetSlowLogTime)
+	s.Get("/api/v1/proxy/black_sqls", s.GetAllBlackSQL)
+	s.Post("/api/v1/proxy/black_sqls", s.AddOneBlackSQL)
+	s.Delete("/api/v1/proxy/black_sqls", s.DelOneBlackSQL)
 
-	s.web.PUT("/api/v1/proxy/config/save", s.SaveProxyConfig)
+	s.Get("/api/v1/proxy/slow_sql/time", s.GetSlowLogTime)
+	s.Put("/api/v1/proxy/slow_sql/status", s.SwitchSlowSQL)
+	s.Put("/api/v1/proxy/slow_sql/time", s.SetSlowLogTime)
+
+	s.Put("/api/v1/proxy/config/save", s.SaveProxyConfig)
 }
 
-func (s *ApiServer) CheckAuth(username, password string,ctx echo.Context) (bool,error) {
+func (s *ApiServer) CheckAuth(username, password string) bool {
 	if username == s.webUser && password == s.webPassword {
-		return true,nil
+		return true
 	}
-	return false,nil
+	return false
 }

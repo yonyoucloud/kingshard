@@ -65,8 +65,8 @@ type Server struct {
 	slowLogTime        [2]int
 	blacklistSqlsIndex int32
 	blacklistSqls      [2]*BlacklistSqls
-	allowipsIndex      BoolIndex
-	allowips           [2][]IPInfo
+	allowipsIndex      int32
+	allowips           [2][]net.IP
 
 	counter *Counter
 	nodes   map[string]*backend.Node
@@ -77,6 +77,15 @@ type Server struct {
 
 	configUpdateMutex sync.RWMutex
 	configVer         uint32
+}
+
+func (s *Server) ProxyConfig() (string, int, int64, int64, int64, int64) {
+	return s.logSql[s.logSqlIndex],
+		s.slowLogTime[s.slowLogTimeIndex],
+		s.counter.ClientConns,
+		s.counter.ClientQPS,
+		s.counter.ErrLogTotal,
+		s.counter.SlowLogTotal
 }
 
 func (s *Server) Status() string {
@@ -95,14 +104,15 @@ func (s *Server) Status() string {
 }
 
 //TODO
-func parseAllowIps(allowIpsStr string) ([]IPInfo, error) {
+func parseAllowIps(allowIpsStr string) ([]net.IP, error) {
 	if len(allowIpsStr) == 0 {
-		return make([]IPInfo, 0, 10), nil
+		return make([]net.IP, 0, 10), nil
 	}
 	ipVec := strings.Split(allowIpsStr, ",")
-	allowIpsList := make([]IPInfo, 0, 10)
+	allowIpsList := make([]net.IP, 0, 10)
 	for _, ipStr := range ipVec {
-		if ip, err := ParseIPInfo(strings.TrimSpace(ipStr)); err == nil {
+		ip := net.ParseIP(strings.TrimSpace(ipStr))
+		if nil != ip {
 			allowIpsList = append(allowIpsList, ip)
 		}
 	}
@@ -265,10 +275,10 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	if allowIps, err := parseAllowIps(s.cfg.AllowIps); err != nil {
 		return nil, err
 	} else {
-		current, another, _ := s.allowipsIndex.Get()
-		s.allowips[current] = allowIps
-		s.allowips[another] = allowIps
+		s.allowips[0] = allowIps
+		s.allowips[1] = allowIps
 	}
+	atomic.StoreInt32(&s.allowipsIndex, 0)
 
 	if nodes, err := parseNodes(s.cfg.Nodes); err != nil {
 		return nil, err
@@ -455,21 +465,23 @@ func (s *Server) ChangeSlowLogTime(v string) error {
 }
 
 func (s *Server) AddAllowIP(v string) error {
-	ip, err := ParseIPInfo(v)
-	if err != nil {
-		return err
-	}
+	clientIP := net.ParseIP(v)
 
-	current, another, index := s.allowipsIndex.Get()
-
-	for _, oldIp := range s.allowips[current] {
-		if ip.Info() == oldIp.Info() {
+	for _, ip := range s.allowips[s.allowipsIndex] {
+		if ip.Equal(clientIP) {
 			return nil
 		}
 	}
-	s.allowips[another] = s.allowips[current]
-	s.allowips[another] = append(s.allowips[another], ip)
-	s.allowipsIndex.Set(!index)
+
+	if s.allowipsIndex == 0 {
+		s.allowips[1] = s.allowips[0]
+		s.allowips[1] = append(s.allowips[1], clientIP)
+		atomic.StoreInt32(&s.allowipsIndex, 1)
+	} else {
+		s.allowips[0] = s.allowips[1]
+		s.allowips[0] = append(s.allowips[0], clientIP)
+		atomic.StoreInt32(&s.allowipsIndex, 0)
+	}
 
 	if s.cfg.AllowIps == "" {
 		s.cfg.AllowIps = strings.Join([]string{s.cfg.AllowIps, v}, "")
@@ -481,21 +493,41 @@ func (s *Server) AddAllowIP(v string) error {
 }
 
 func (s *Server) DelAllowIP(v string) error {
-	current, another, index := s.allowipsIndex.Get()
-	s.allowips[another] = s.allowips[current]
-	ipVec2 := strings.Split(s.cfg.AllowIps, ",")
-	for i, ipInfo := range s.allowips[another] {
-		if v == ipInfo.Info() {
-			s.allowips[another] = append(s.allowips[another][:i], s.allowips[another][i+1:]...)
-			s.allowipsIndex.Set(!index)
-			for i, ip := range ipVec2 {
-				if ip == v {
-					ipVec2 = append(ipVec2[:i], ipVec2[i+1:]...)
-					s.cfg.AllowIps = strings.Trim(strings.Join(ipVec2, ","), ",")
-					return nil
+	clientIP := net.ParseIP(v)
+
+	if s.allowipsIndex == 0 {
+		s.allowips[1] = s.allowips[0]
+		ipVec2 := strings.Split(s.cfg.AllowIps, ",")
+		for i, ip := range s.allowips[1] {
+			if ip.Equal(clientIP) {
+				s.allowips[1] = append(s.allowips[1][:i], s.allowips[1][i+1:]...)
+				atomic.StoreInt32(&s.allowipsIndex, 1)
+				for i, ip := range ipVec2 {
+					if ip == v {
+						ipVec2 = append(ipVec2[:i], ipVec2[i+1:]...)
+						s.cfg.AllowIps = strings.Trim(strings.Join(ipVec2, ","), ",")
+						return nil
+					}
 				}
+				return nil
 			}
-			return nil
+		}
+	} else {
+		s.allowips[0] = s.allowips[1]
+		ipVec2 := strings.Split(s.cfg.AllowIps, ",")
+		for i, ip := range s.allowips[0] {
+			if ip.Equal(clientIP) {
+				s.allowips[0] = append(s.allowips[0][:i], s.allowips[0][i+1:]...)
+				atomic.StoreInt32(&s.allowipsIndex, 0)
+				for i, ip := range ipVec2 {
+					if ip == v {
+						ipVec2 = append(ipVec2[:i], ipVec2[i+1:]...)
+						s.cfg.AllowIps = strings.Trim(strings.Join(ipVec2, ","), ",")
+						return nil
+					}
+				}
+				return nil
+			}
 		}
 	}
 
@@ -730,10 +762,9 @@ func (s *Server) GetSlowLogTime() int {
 
 func (s *Server) GetAllowIps() []string {
 	var ips []string
-	current, _, _ := s.allowipsIndex.Get()
-	for _, v := range s.allowips[current] {
-		if v.Info() != "" {
-			ips = append(ips, v.Info())
+	for _, v := range s.allowips[s.allowipsIndex] {
+		if v != nil {
+			ips = append(ips, v.String())
 		}
 	}
 	return ips
@@ -808,9 +839,14 @@ func (s *Server) UpdateConfig(newCfg *config.Config) {
 		atomic.StoreInt32(&s.blacklistSqlsIndex, 0)
 	}
 
-	_, another, index := s.allowipsIndex.Get()
-	s.allowips[another] = newAllowIps
-	s.allowipsIndex.Set(!index)
+	if 0 == s.allowipsIndex {
+		s.allowips[1] = newAllowIps
+		atomic.StoreInt32(&s.allowipsIndex, 1)
+
+	} else {
+		s.allowips[0] = newAllowIps
+		atomic.StoreInt32(&s.allowipsIndex, 0)
+	}
 
 	s.users = newUserList
 
@@ -840,41 +876,4 @@ func (s *Server) UpdateConfig(newCfg *config.Config) {
 
 	//version update
 	s.configVer += 1
-}
-
-func (s *Server) GetMonitorData() map[string]map[string]string{
-	data := make(map[string]map[string]string)
-
-	// get all node's monitor data
-	for _, node := range s.nodes {
-		//get master monitor data
-		dbData := make(map[string]string)
-		idleConns,cacheConns,pushConnCount,popConnCount := node.Master.ConnCount()
-
-		dbData["idleConn"] 		= strconv.Itoa(idleConns)
-		dbData["cacheConns"] 	= strconv.Itoa(cacheConns)
-		dbData["pushConnCount"] = strconv.FormatInt(pushConnCount, 10)
-		dbData["popConnCount"] 	= strconv.FormatInt(popConnCount, 10)
-		dbData["maxConn"]	= fmt.Sprintf("%d", node.Cfg.MaxConnNum)
-		dbData["type"] 		= "master"
-
-		data[node.Master.Addr()] = dbData
-
-		//get all slave monitor data
-		for _, slaveNode := range node.Slave {
-			slaveDbData := make(map[string]string)
-			idleConns,cacheConns,pushConnCount,popConnCount := slaveNode.ConnCount()
-			
-			slaveDbData["idleConn"] 		= strconv.Itoa(idleConns)
-			slaveDbData["cacheConns"] 		= strconv.Itoa(cacheConns)
-			slaveDbData["pushConnCount"] 	= strconv.FormatInt(pushConnCount, 10)
-			slaveDbData["popConnCount"] 	= strconv.FormatInt(popConnCount, 10)
-			slaveDbData["maxConn"]	= fmt.Sprintf("%d", node.Cfg.MaxConnNum)
-			slaveDbData["type"] 	= "slave"
-
-			data[slaveNode.Addr()] = slaveDbData
-		}
-	}
-
-	return data
 }
