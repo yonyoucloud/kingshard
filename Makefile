@@ -9,6 +9,7 @@ goyacc:
 	${GOPATH}/bin/goyacc -o ./sqlparser/sql.go ./sqlparser/sql.y
 	gofmt -w ./sqlparser/sql.go
 kingshard:
+	sh ./genver.sh
 	go build -mod=vendor -ldflags "-X \"main.BuildVersion=${COMMIT_HASH}\" -X \"main.BuildDate=$(BUILD_DATE)\"" -o ./bin/kingshard ./cmd/kingshard
 clean:
 	@rm -rf bin
