@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo"
 	ksError "github.com/yonyoucloud/kingshard/core/errors"
 	"github.com/yonyoucloud/kingshard/core/golog"
-	"github.com/labstack/echo"
 )
 
 func (s *ApiServer) GetAllowIps(c echo.Context) error {
@@ -87,7 +87,7 @@ type ProxyConfig struct {
 	ClientConns  int64  `json:"client_conns"`
 	ClientQPS    int64  `json:"client_qps"`
 	ErrLogTotal  int64  `json:"errlog_total"`
-	SlowLogTotal int64  `json:"slow_Log_total"`
+	SlowLogTotal int64  `json:"slow_log_total"`
 }
 
 //get nodes status
@@ -374,6 +374,11 @@ func (s *ApiServer) SetSlowLogTime(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	return c.JSON(http.StatusOK, "ok")
+}
+
+func (s *ApiServer) ClearSlowLogTotal(c echo.Context) error {
+	s.proxy.ClearSlowLogTotal()
 	return c.JSON(http.StatusOK, "ok")
 }
 

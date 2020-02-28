@@ -23,17 +23,16 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/yonyoucloud/kingshard/mysql"
 
 	"github.com/yonyoucloud/kingshard/backend"
 	"github.com/yonyoucloud/kingshard/config"
 	"github.com/yonyoucloud/kingshard/core/errors"
 	"github.com/yonyoucloud/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/mysql"
 	"github.com/yonyoucloud/kingshard/proxy/router"
-	"sync"
 )
 
 type Schema struct {
@@ -462,6 +461,10 @@ func (s *Server) ChangeSlowLogTime(v string) error {
 	s.cfg.SlowLogTime = tmp
 
 	return err
+}
+
+func (s *Server) ClearSlowLogTotal() {
+	s.counter.ClearSlowLogTotal()
 }
 
 func (s *Server) AddAllowIP(v string) error {

@@ -16,13 +16,13 @@ package web
 import (
 	"time"
 
-	"github.com/yonyoucloud/kingshard/config"
-	"github.com/yonyoucloud/kingshard/core/golog"
-	"github.com/yonyoucloud/kingshard/proxy/server"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine/standard"
 	mw "github.com/labstack/echo/middleware"
 	"github.com/tylerb/graceful"
+	"github.com/yonyoucloud/kingshard/config"
+	"github.com/yonyoucloud/kingshard/core/golog"
+	"github.com/yonyoucloud/kingshard/proxy/server"
 )
 
 type ApiServer struct {
@@ -99,6 +99,7 @@ func (s *ApiServer) RegisterURL() {
 	s.Get("/api/v1/proxy/slow_sql/time", s.GetSlowLogTime)
 	s.Put("/api/v1/proxy/slow_sql/status", s.SwitchSlowSQL)
 	s.Put("/api/v1/proxy/slow_sql/time", s.SetSlowLogTime)
+	s.Put("/api/v1/proxy/slow_log_total/clear", s.ClearSlowLogTotal)
 
 	s.Put("/api/v1/proxy/config/save", s.SaveProxyConfig)
 }
